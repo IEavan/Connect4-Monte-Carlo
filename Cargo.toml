@@ -1,0 +1,6 @@
+[package]
+name = "connect4"
+version = "0.1.0"
+authors = ["IEavan <E.Pattie@warwick.ac.uk>"]
+
+[dependencies]
