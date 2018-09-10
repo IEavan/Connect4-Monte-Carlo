@@ -1,16 +1,21 @@
+extern crate rand;
+
 mod grid;
+mod mcts;
 use grid::*;
+use mcts::*;
 
 fn main() {
     let mut test_grid: GridState = GridState::new();
-    test_grid.insert(4).unwrap();
     println!("{}", test_grid);
-    let moves = test_grid.get_moves();
-    for game_move in moves.iter() {
-        match game_move {
-            Some(game_move) => println!("{}", game_move),
-            None => println!("Nothing")
+    loop {
+        let move_list = test_grid.get_moves();
+        let game_move = get_best_move(move_list, 100);
+        test_grid = game_move.next;
+        println!("{}", test_grid);
+        if let Some(winner) = test_grid.winner {
+            println!("{:?} wins", winner);
+            break;
         }
     }
-
 }

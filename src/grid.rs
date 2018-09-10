@@ -4,29 +4,25 @@
 use std::fmt;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-enum Player {
+pub enum Player {
     Yellow,
     Red
 }
 
 #[derive(Debug, Copy, Clone)]
 struct Tile {
-    owner: Player,
-    horizontal: u8,
-    vertical: u8,
-    rising_diagonal: u8,
-    falling_diagonal: u8
+    owner: Player
 }
 
 pub struct GridState {
     grid: [[Option<Tile>; 9]; 6],
-    turn: Player,
-    winner: Option<Player>
+    pub turn: Player,
+    pub winner: Option<Player>
 }
 
 pub struct GameMove {
-    previous: GridState,
-    next: GridState
+    pub previous: GridState,
+    pub next: GridState
 }
 
 pub struct Game {
@@ -39,14 +35,13 @@ impl GridState {
         return GridState {grid: empty_grid, turn: Player::Yellow, winner: None};
     }
 
-    pub fn get_moves(&self) -> [Option<GameMove>; 9] {
-        let mut move_list: [Option<GameMove>; 9] = Default::default();
+    pub fn get_moves(&self) -> Vec<GameMove> {
+        let mut move_list: Vec<GameMove> = Vec::new();
         for i in 0..9 {
             let previous = self.clone();
             let mut next = self.clone();
-            move_list[i] = match next.insert(i) {
-                Ok(_)  => Some(GameMove {previous: previous, next: next}),
-                Err(_) => None
+            if let Ok(_) = next.insert(i) {
+                move_list.push(GameMove {previous: previous, next: next});
             };
         }
         move_list
@@ -65,19 +60,11 @@ impl GridState {
             }
         }
 
-        let adjacent_tiles = self.get_adjacent_tiles(column, free_position);
-        let new_tile: Tile = Tile {owner: self.turn,
-            horizontal: GridState::sum_horizontal(adjacent_tiles[3], adjacent_tiles[5]),
-            vertical: GridState::sum_vertical(adjacent_tiles[1], adjacent_tiles[7]),
-            falling_diagonal: GridState::sum_falling(adjacent_tiles[0], adjacent_tiles[8]),
-            rising_diagonal: GridState::sum_rising(adjacent_tiles[2], adjacent_tiles[6])
-        };
+        let new_tile: Tile = Tile {owner: self.turn};
 
-        if new_tile.horizontal == 4 || new_tile.vertical == 4 ||
-           new_tile.falling_diagonal == 4 || new_tile.rising_diagonal == 4 {
+        if GridState::check_winner(&self, free_position as i32, column as i32) {
             self.winner = Some(self.turn);
         }
-        println!("Tile horizontal: {}", new_tile.vertical);
 
         self.grid[free_position][column] = Some(new_tile);
         self.turn = match self.turn {
@@ -87,57 +74,100 @@ impl GridState {
         Ok(())
     }
 
-    fn sum_horizontal(t1: Option<Tile>, t2: Option<Tile>) -> u8 {
-        match (t1, t2) {
-            (None, None) => 1,
-            (None, Some(t)) => t.horizontal + 1,
-            (Some(t), None) => t.horizontal + 1,
-            (Some(t1),  Some(t2)) => t1.horizontal + t2.horizontal + 1
-        }
-    }
-    fn sum_vertical(t1: Option<Tile>, t2: Option<Tile>) -> u8 {
-        match (t1, t2) {
-            (None, None) => 1,
-            (None, Some(t)) => t.vertical + 1,
-            (Some(t), None) => t.vertical + 1,
-            (Some(t1),  Some(t2)) => t1.vertical + t2.vertical + 1
-        }
-    }
-    fn sum_falling(t1: Option<Tile>, t2: Option<Tile>) -> u8 {
-        match (t1, t2) {
-            (None, None) => 1,
-            (None, Some(t)) => t.falling_diagonal + 1,
-            (Some(t), None) => t.falling_diagonal + 1,
-            (Some(t1),  Some(t2)) => t1.falling_diagonal + t2.falling_diagonal + 1
-        }
-    }
-    fn sum_rising(t1: Option<Tile>, t2: Option<Tile>) -> u8 {
-        match (t1, t2) {
-            (None, None) => 1,
-            (None, Some(t)) => t.rising_diagonal + 1,
-            (Some(t), None) => t.rising_diagonal + 1,
-            (Some(t1),  Some(t2)) => t1.rising_diagonal + t2.rising_diagonal + 1
-        }
-    }
+    fn check_winner(&self, new_row: i32, new_column: i32) -> bool {
+        //TODO: Candidate for macros
+        let last_player = self.turn;
 
-    fn get_adjacent_tiles(&self, column: usize, row: usize) -> [Option<Tile>; 9] {
-        let mut adjacent_tiles: [Option<Tile>; 9] = Default::default();
-        for i in -1..2 {
-            for j in -1..2 {
-                let tile;
-                if row as i8 + i < 0 || row as i8 + i > 5 {
-                    tile = None;
-                } else if i == 0 && j == 0 {
-                    tile = None;
-                } else if column as i8 + j < 0 || column as i8 + j > 8 {
-                    tile = None;
-                } else {
-                    tile = self.grid[(row as i8 + i) as usize][(column as i8 + j) as usize];
-                }
-                adjacent_tiles[(3 * (i + 1) + (j + 1)) as usize] = tile;
+        // Check Horizontal
+        let mut row_count = 0;
+        for i in 0..3 {
+            if new_column + i + 1 >= 0 && new_column + i + 1 < 9  { 
+                if let Some(x) = self.grid[new_row as usize][(new_column + i + 1) as usize] {
+                    if x.owner == last_player {row_count += 1;} else {break;}
+                } else {break;}
+            } else {
+                break;
             }
         }
-        adjacent_tiles
+        for i in 0..3 {
+            if new_column - i - 1 >= 0 && new_column - i - 1 < 9  { 
+                if let Some(x) = self.grid[new_row as usize][(new_column - i - 1) as usize] {
+                    if x.owner == last_player {row_count += 1;} else {break;}
+                } else {break;}
+            } else {
+                break;
+            }
+        }
+        
+        // Check Vertical
+        let mut vert_count = 0;
+        for i in 0..3 {
+            if new_row + i + 1 >= 0 && new_row + i + 1 < 6  { 
+                if let Some(x) = self.grid[(new_row + i + 1) as usize][(new_column) as usize] {
+                    if x.owner == last_player {vert_count += 1;} else {break;}
+                } else {break;}
+            } else {
+                break;
+            }
+        }
+        for i in 0..3 {
+            if new_row - i - 1 >= 0 && new_row - i - 1 < 6  { 
+                if let Some(x) = self.grid[(new_row - i - 1) as usize][(new_column) as usize] {
+                    if x.owner == last_player {vert_count += 1;} else {break;}
+                } else {break;}
+            } else {
+                break;
+            }
+        }
+        
+        // Check Rising Diagonal
+        let mut rising_count = 0;
+        for i in 0..3 {
+            if new_column + i + 1 >= 0 && new_column + i + 1 < 9  && 
+               new_row - i - 1 >= 0 && new_row - i - 1 < 6  { 
+                if let Some(x) = self.grid[(new_row - i - 1) as usize][(new_column + i + 1) as usize] {
+                    if x.owner == last_player {rising_count += 1;} else {break;}
+                } else {break;}
+            } else {
+                break;
+            }
+        }
+        for i in 0..3 {
+            if new_column - i - 1 >= 0 && new_column - i - 1 < 9  && 
+               new_row + i + 1 >= 0 && new_row + i + 1 < 6  { 
+                if let Some(x) = self.grid[(new_row + i + 1) as usize][(new_column - i - 1) as usize] {
+                    if x.owner == last_player {rising_count += 1;} else {break;}
+                } else {break;}
+            } else {
+                break;
+            }
+        }
+        
+        // Check Falling Diagonal
+        let mut falling_count = 0;
+        for i in 0..3 {
+            if new_column + i + 1 >= 0 && new_column + i + 1 < 9  && 
+               new_row + i + 1 >= 0 && new_row + i + 1 < 6  { 
+                if let Some(x) = self.grid[(new_row + i + 1) as usize][(new_column + i + 1) as usize] {
+                    if x.owner == last_player {falling_count += 1;} else {break;}
+                } else {break;}
+            } else {
+                break;
+            }
+        }
+        for i in 0..3 {
+            if new_column - i - 1 >= 0 && new_column - i - 1 < 9  && 
+               new_row - i - 1 >= 0 && new_row - i - 1 < 6  { 
+                if let Some(x) = self.grid[(new_row - i - 1) as usize][(new_column - i - 1) as usize] {
+                    if x.owner == last_player {falling_count += 1;} else {break;}
+                } else {break;}
+            } else {
+                break;
+            }
+        }
+
+        //println!("Hor: {} | Vert: {} | Rising: {} | Falling: {}", row_count, vert_count, rising_count, falling_count);
+        row_count >= 3 || vert_count >= 3 || rising_count >= 3 || falling_count >= 3
     }
 }
 
@@ -210,6 +240,7 @@ impl Clone for GridState {
     fn clone(&self) -> GridState {
         let mut new_grid = GridState::new();
         new_grid.turn = self.turn;
+        new_grid.winner = self.winner;
         for i in 0..6 {
             for j in 0..9 {
                 new_grid.grid[i][j] = self.grid[i][j];
@@ -219,7 +250,6 @@ impl Clone for GridState {
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -227,13 +257,13 @@ mod test {
     #[test]
     fn test_detect_row_win() {
         let mut grid = GridState::new();
-        grid.insert(0).unwrap();
-        grid.insert(8).unwrap();
         grid.insert(1).unwrap();
-        grid.insert(7).unwrap();
+        grid.insert(8).unwrap();
         grid.insert(2).unwrap();
-        grid.insert(6).unwrap();
+        grid.insert(7).unwrap();
         grid.insert(3).unwrap();
+        grid.insert(6).unwrap();
+        grid.insert(0).unwrap();
         assert_eq!(grid.winner.unwrap(), Player::Yellow);
     }
     
@@ -262,6 +292,23 @@ mod test {
         grid.insert(0).unwrap();
         assert_eq!(grid.winner.unwrap(), Player::Yellow);
     }
+    
+    #[test]
+    fn test_detect_rising_win() {
+        let mut grid = GridState::new();
+        grid.insert(0).unwrap();
+        grid.insert(1).unwrap();
+        grid.insert(1).unwrap();
+        grid.insert(2).unwrap();
+        grid.insert(3).unwrap();
+        grid.insert(2).unwrap();
+        grid.insert(2).unwrap();
+        grid.insert(3).unwrap();
+        grid.insert(4).unwrap();
+        grid.insert(3).unwrap();
+        grid.insert(3).unwrap();
+        assert_eq!(grid.winner.unwrap(), Player::Yellow);
+    }
 
     #[test]
     fn test_no_early_winner() {
@@ -273,5 +320,18 @@ mod test {
         grid.insert(0).unwrap();
         grid.insert(6).unwrap();
         assert_eq!(grid.winner, None);
+    }
+    
+    #[test]
+    fn test_no_moves_after_win() {
+        let mut grid = GridState::new();
+        grid.insert(0).unwrap();
+        grid.insert(8).unwrap();
+        grid.insert(0).unwrap();
+        grid.insert(7).unwrap();
+        grid.insert(0).unwrap();
+        grid.insert(6).unwrap();
+        grid.insert(0).unwrap();
+        assert_eq!(grid.get_moves().len(), 0);
     }
 }
