@@ -1,4 +1,5 @@
 extern crate rand;
+extern crate rayon;
 
 mod grid;
 mod mcts;

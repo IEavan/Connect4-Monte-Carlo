@@ -2,6 +2,7 @@
 
 use grid::*;
 use rand::prelude::*;
+use rayon::prelude::*;
 
 enum Finish {
     Win,
@@ -11,13 +12,13 @@ enum Finish {
 
 pub fn get_best_move(move_list: Vec<GameMove>, rollouts: u32) -> GameMove {
     if move_list.len() == 0 {panic!("No moves to select best from");}
-    move_list.into_iter()
-             .map(|x| (estimate_win_prob(&x.next, rollouts), x))
-             .fold((2.0, GameMove {previous: GridState::new(), next: GridState::new()}),
-                |old, new| if old.0.gt(&new.0) {new} else {old}).1
+    move_list.into_par_iter()
+             .map(|x| (estimate_score(&x.next, rollouts), x))
+             .min_by_key(|x| x.0)
+             .unwrap().1
 }
 
-pub fn estimate_win_prob(current_state: &GridState, rollouts: u32) -> f64 {
+pub fn estimate_score(current_state: &GridState, rollouts: u32) -> i32 {
     let mut wins = 0;
     let mut losses = 0;
     let mut _draws = 0;
@@ -28,7 +29,7 @@ pub fn estimate_win_prob(current_state: &GridState, rollouts: u32) -> f64 {
             Finish::Draw => _draws += 1
         }
     }
-    (wins - losses) as f64 / 100.0
+    wins - losses
 }
 
 fn rollout(start_state: &GridState) -> Finish {

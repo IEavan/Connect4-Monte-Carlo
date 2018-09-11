@@ -250,6 +250,15 @@ impl Clone for GridState {
     }
 }
 
+impl GameMove {
+    pub fn new() -> GameMove {
+        GameMove { 
+            previous: GridState::new(),
+            next: GridState::new()
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

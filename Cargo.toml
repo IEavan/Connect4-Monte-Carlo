@@ -5,3 +5,4 @@ authors = ["IEavan <E.Pattie@warwick.ac.uk>"]
 
 [dependencies]
 rand = "0.5.5"
+rayon = "1.0.2"
