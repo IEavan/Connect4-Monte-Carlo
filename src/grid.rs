@@ -9,11 +9,12 @@ pub enum Player {
     Red
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 struct Tile {
     owner: Player
 }
 
+#[derive(PartialEq)]
 pub struct GridState {
     grid: [[Option<Tile>; 9]; 6],
     pub turn: Player,
@@ -191,6 +192,47 @@ impl fmt::Display for GridState {
         write!(f, "")
     }
 }
+
+impl fmt::Debug for GridState {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(writeln!(f, "{:?}'s Turn", self.turn));
+        for row in self.grid.iter() {
+            try!(write!(f, "["));
+            for grid_cell in row.iter() {
+                let cell_char = match grid_cell {
+                    None => " _",
+                    Some(t) => match t.owner {
+                        Player::Yellow => " Y",
+                        Player::Red => " R",
+                    }
+                };
+                try!(write!(f, "{}", cell_char));
+            }
+            try!(writeln!(f, " ]"));
+        }
+        write!(f, "")
+    }
+}
+
+/*
+impl PartialEq for GridState {
+    fn eq(&self, other: &GridState) -> bool {
+        for (row1, row2) in self.grid.iter().zip(other.grid.iter()) {
+            for (val1, val2) in row1.iter().zip(row2.iter()) {
+                let is_same = match (val1, val2) {
+                    (Some(x), Some(y)) => x == y,
+                    (None, Some(_)) => false,
+                    (Some(_), None) => false,
+                    (None, None) => true
+                };
+                if !is_same {return false;}
+            }
+        }
+        self.turn == other.turn &&
+        self.winner == other.winner
+    }
+}
+*/
 
 impl fmt::Display for GameMove {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

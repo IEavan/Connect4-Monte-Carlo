@@ -68,4 +68,21 @@ mod tests {
         let best_move = get_best_move(test_grid.get_moves(), 10);
         assert_eq!(best_move.next.winner, Some(Player::Yellow));
     }
+    
+    #[test]
+    fn test_not_lose_is_best_move() {
+        let mut test_grid = GridState::new();
+        test_grid.insert(0).unwrap();
+        test_grid.insert(8).unwrap();
+        test_grid.insert(1).unwrap();
+        test_grid.insert(0).unwrap();
+        test_grid.insert(2).unwrap();
+        let best_move = get_best_move(test_grid.get_moves(), 100);
+        let mut expected_best_move = best_move.previous;
+        expected_best_move.insert(3).unwrap();
+        assert_eq!(
+            best_move.next,
+            expected_best_move
+        );
+    }
 }
